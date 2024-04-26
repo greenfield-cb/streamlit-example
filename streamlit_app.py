@@ -36,11 +36,6 @@ cols = {
     'signature': None,
     }
 
-weth_addr = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
-usdc_addr = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
-usdt_addr = '0xdac17f958d2ee523a2206206994597c13d831ec7'
-safe_addr = '0x5afe3855358e112b5647b952709e6165e1c1eeee'
-
 response = requests.get(url)
 data = response.json()
 
@@ -56,11 +51,10 @@ prices['price'] = prices['price'].astype(float)
 
 @st.cache_data
 def load_tokens():
-    pprint("LOADING")
     tokens = pd.read_csv(filepath_or_buffer='cow_tokens.csv', usecols=['address', 'name', 'decimals'])
     tokens['decimals'] = tokens['decimals'].astype(float)
     tokens = tokens.rename(columns={ 'address': 'token' })
-    tokens = tokens.sort_values(by=["name"], ascending=[True])
+    tokens = tokens.sort_values(by=["name"], ascending=[True], ignore_index=True)
     return tokens
 
 
@@ -82,9 +76,7 @@ df = df.rename(columns={
     })
 
 
-pprint(tokens)
 i = tokens['name'].eq('Safe Token').idxmax()
-pprint(f"safe token: {i}")
 with left_column:
     option = st.selectbox(
         'Which coin to show?',
@@ -92,15 +84,15 @@ with left_column:
          int(i)
          )
 
-pprint(f"selected: {option}")
 token_addr = tokens.loc[tokens['name'] == option, 'token'].tolist()[0]
-pprint(f"token_addr = {token_addr}")
 
 df = df.dropna()
 df = df[(df.sellToken == token_addr) | (df.buyToken == token_addr)]
 
+usdc_addr = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
 eth_price = prices.loc[prices['token'] == usdc_addr, 'price'].tolist()[0]
 
+# table
 
 df['sellPrice'] = df['sellPrice'] / eth_price * 10 ** (df['sellDecimals'] - 6)
 df['buyPrice'] = df['buyPrice'] / eth_price * 10 ** (df['buyDecimals'] - 6)
@@ -112,29 +104,39 @@ df.loc[df['sellToken'] == token_addr, 'Price'] = ( df['buyAmount']  * df['buyPri
 df.loc[df['buyToken'] == token_addr, 'Price'] = ( df['sellAmount']  * df['sellPrice'] ) / df['buyAmount']
 
 df['Price'] = df['Price'].apply({lambda x: float(round(x,3))})
-
-df = df.sort_values(by=["Price"], ascending=[False])
-df['Buy Volume'] = np.nan
-df['Buy Volume'] = df['Buy Volume'].astype(float)
-df.loc[df['buyToken'] == token_addr, "Buy Volume"] = df["buyAmount"]
-df["Volume"] = df["Buy Volume"].fillna(0)
-df.loc[df['buyToken'] == token_addr, "Buy Volume"] = df["Buy Volume"].cumsum()
-
-df = df.sort_values(by=["Price"], ascending=[True])
-df['Sell Volume'] = np.nan
-df['Sell Volume'] = df['Sell Volume'].astype(float)
-df.loc[df['sellToken'] == token_addr, "Sell Volume"] = df["sellAmount"]
-
-df["Volume"] = df["Volume"] + df["Sell Volume"].fillna(0)
-
-df.loc[df['sellToken'] == token_addr, "Sell Volume"] = df["Sell Volume"].cumsum()
-
 df = df.sort_values(by=["Price"], ascending=[True])
 
-#pprint(df.dtypes)
+df.loc[df['buyToken'] == token_addr, "Volume"] = df["buyAmount"]
+df.loc[df['sellToken'] == token_addr, "Volume"] = df["sellAmount"]
 
 df["owner"] = 'https://etherscan.io/address/' + df['owner']
 
+
+# chart
+
+buy = df.loc[df['buyToken'] == token_addr][["buyAmount", "Price"]].copy()
+sell = df.loc[df['sellToken'] == token_addr][["sellAmount", "Price"]].copy()
+
+buy = buy.rename(columns={"buyAmount": "Buy Volume"})
+sell = sell.rename(columns={"sellAmount": "Sell Volume"})
+
+buy = buy.groupby(['Price']).sum()
+sell = sell.groupby(['Price']).sum()
+
+buy = buy.sort_values(by=["Price"], ascending=[False])
+sell = sell.sort_values(by=["Price"], ascending=[True])
+
+buy['Buy Volume'] = buy['Buy Volume'].cumsum()
+sell['Sell Volume'] = sell['Sell Volume'].cumsum()
+
+buy['Sell Volume'] = np.nan
+sell['Buy Volume'] = np.nan
+
+chart = pd.concat([buy, sell])
+chart['Price'] = chart.index
+
+
+# output
 
 with left_column:
     st.dataframe(df[["sellName", "buyName", "Volume", "Price", "owner"]], column_config={
@@ -143,6 +145,9 @@ with left_column:
         "owner": st.column_config.LinkColumn(display_text="^https://etherscan.io/address/(.*)$"),
         }, use_container_width=True, hide_index=True, height=600)
 
+
 with right_column:
-    st.line_chart(data=df, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
-    st.bar_chart(data=df, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
+    st.line_chart(data=chart, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
+    st.bar_chart(data=chart, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
+
+pprint("the end")
