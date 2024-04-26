@@ -142,7 +142,7 @@ with left_column:
     st.dataframe(df[["sellName", "buyName", "Volume", "Price", "owner"]], column_config={
         "sellName": "Sell",
         "buyName": "Buy",
-        "owner": st.column_config.LinkColumn(display_text="^https://etherscan.io/address/(.*)$"),
+        "owner": st.column_config.LinkColumn(label="Seller", display_text="^https://etherscan.io/address/(.*)$"),
         }, use_container_width=True, hide_index=True, height=600)
 
 
