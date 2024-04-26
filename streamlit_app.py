@@ -60,6 +60,7 @@ def load_tokens():
     tokens['decimals'] = tokens['decimals'].astype(float)
     tokens = tokens.rename(columns={ 'address': 'token' })
     tokens = tokens.sort_values(by=["name"], ascending=[True], ignore_index=True)
+    tokens["longName"] = tokens["name"] + " [" + tokens["token"] + "]"
     return tokens
 
 
@@ -85,11 +86,11 @@ i = tokens['name'].eq('Safe Token').idxmax()
 with left_column:
     option = st.selectbox(
         'Which coin to show?',
-         tokens['name'],
+         tokens['longName'],
          int(i)
          )
 
-token_addr = tokens.loc[tokens['name'] == option, 'token'].tolist()[0]
+token_addr = tokens.loc[tokens['longName'] == option, 'token'].tolist()[0]
 
 df = df.dropna()
 df = df[(df.sellToken == token_addr) | (df.buyToken == token_addr)]
