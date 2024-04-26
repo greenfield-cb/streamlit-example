@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
 from decimal import Decimal
 from pprint import pprint
 import json
@@ -10,8 +11,11 @@ import numpy as np
 
 url = "https://api.cow.fi/mainnet/api/v1/auction"
 st.set_page_config(layout="wide")
-st.markdown("<h1 style='text-align: center;'>Cow Swap Orderbook</h1>", unsafe_allow_html=True)
-st.button("Reload", type="primary")
+now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+st.markdown(f"<h3 style='text-align: center;'>Cow Swap Orderbook - {now}</h3>", unsafe_allow_html=True)
+cols = st.columns([1]*15)
+with cols[7]:
+    st.button("Refresh", type="primary", use_container_width = True)
 left_column, right_column = st.columns(2)
 
 cols = {
@@ -150,5 +154,3 @@ with left_column:
 with right_column:
     st.line_chart(data=chart, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
     st.bar_chart(data=chart, x="Price", y=["Buy Volume", "Sell Volume"], color=["#FF0000", "#0000FF"])
-
-pprint("the end")
