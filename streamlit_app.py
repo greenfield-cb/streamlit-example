@@ -11,6 +11,7 @@ import numpy as np
 url = "https://api.cow.fi/mainnet/api/v1/auction"
 st.set_page_config(layout="wide")
 st.markdown("<h1 style='text-align: center;'>Cow Swap Orderbook</h1>", unsafe_allow_html=True)
+st.button("Reload", type="primary")
 left_column, right_column = st.columns(2)
 
 cols = {
